@@ -1,0 +1,31 @@
+declare @sqlserver varchar(10)
+declare @sqlpassword varchar(100)
+declare @SQL varchar(5000)
+
+
+
+declare curRMC cursor for
+select distinct sqlserver,sqlpassword from mt2sql14.connection.dbo.sqlparameters where sqlusername='sa' and 
+sqlserver in (select srvname from  master.dbo.sysservers where datasource<>@@SERVERNAME)
+open curRMC
+fetch next from curRMC
+into @sqlserver,@sqlpassword
+
+while @@fetch_Status = 0
+begin
+	Begin
+      Set @SQL='USE master 
+GO 
+EXEC sp_addlinkedserver '''+@sqlserver+''', N''SQL Server'' 
+GO 
+Exec sp_addlinkedsrvlogin '''+@sqlserver+''' , ''false'', NULL, ''sa'', '''+@sqlpassword+''''
+	  Print (@SQL)
+    End
+
+fetch next from curRMC
+into  @sqlserver,@sqlpassword
+
+END                       
+close curRMC
+deallocate curRMC
+

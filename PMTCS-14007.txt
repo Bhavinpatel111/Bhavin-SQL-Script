@@ -1,0 +1,111 @@
+use MasterClientCoverage
+go
+
+select * from retmktpep where (Advertiser = 'Hy-Vee Food Stores' and Market ='Omaha, NE') or
+(Advertiser = 'Fareway' and Market ='Omaha, NE') or
+(Advertiser = 'ShopRite' and Market ='Newark, NJ') or
+(Advertiser = 'Total Wine' and Market ='Fort Myers, FL') or
+(Advertiser = 'Total Wine' and Market ='Minneapolis, MN') or
+(Advertiser = 'Table & Vine' and Market = 'Springfield, MA') or 	
+(Advertiser = 'Armanetti Beverage Mart' and Market = 'Chicago, IL') or 	
+(Advertiser = 'Rouses' and Market = 'New Orleans, LA') or
+(Advertiser = 'The Still' and Market = 'Lincoln, NE') or 	
+(Advertiser = 'Food City (K-VA-T)' and Market = 'Knoxville, TN') or 	
+(Advertiser = 'Jewel-Osco (NAI)' and Market = 'Chicago, IL') or 	
+(Advertiser = 'Gerrity''s Supermarkets' and Market = 'Wilkes Barre, PA') or
+(Advertiser = 'Total Wine' and Market = 'Atlanta, GA') or
+(Advertiser = 'Longs Drug (Hawaii)' and Market = 'Honolulu, HI') or 	
+(Advertiser = 'Price Chopper (Kansas City)' and Market = 'Kansas City, MO') or 	
+(Advertiser = 'King Soopers' and Market = 'Denver, CO') or 	
+(Advertiser = 'ValuMarket' and Market = 'Louisville, KY') or
+(Advertiser = 'Total Wine' and Market = 'Miami, FL') or
+(Advertiser = 'Total Wine' and Market = 'Fort Worth, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Charlotte, NC') or 
+(Advertiser = 'Total Wine' and Market = 'Phoenix, AZ') or 
+(Advertiser = 'Total Wine' and Market = 'Dallas, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Austin, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Tampa, FL') or 
+(Advertiser = 'Total Wine' and Market = 'San Antonio, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Newark, NJ') or 
+(Advertiser = 'Total Wine' and Market = 'Las Vegas, NV') or 
+(Advertiser = 'Total Wine' and Market = 'Anaheim, CA') or 
+(Advertiser = 'Total Wine' and Market = 'Sacramento, CA') or 
+(Advertiser = 'Total Wine' and Market = 'Seattle, WA') or 
+(Advertiser = 'Total Wine' and Market = 'Orlando, FL') or 
+(Advertiser = 'Total Wine' and Market = 'Jacksonville, FL') or 
+(Advertiser = 'Fry''s Food & Drug Stores' and Market = 'Phoenix, AZ') or 	
+(Advertiser = 'Price Cutter' and Market = 'Springfield, MO') or 	
+(Advertiser = 'Roche Bros' and Market = 'Boston, MA') or 	
+(Advertiser = 'Boyers Food Markets' and Market = 'Wilkes Barre, PA') or 
+(Advertiser = '5 Star Nash' and Market = 'Toledo, OH') or 	
+(Advertiser = 'S&V Liquors' and Market = 'Fort Wayne, IN') or 	
+(Advertiser = 'Hy-Vee Food Stores' and Market = 'Des Moines, IA')  or
+(Advertiser = 'Coborn''s ' and Market = 'Saint Cloud, MN') or
+(Advertiser = 'Binny''s Beverage Depot' and Market = 'Chicago, IL') or 	
+(Advertiser = 'Smith''s Food & Drug' and Market = 'Las Vegas, NV') or 	
+(Advertiser = 'Rite Aid' and Market = 'Baltimore, MD') or 	
+(Advertiser = 'Fareway' and Market = 'Des Moines, IA') or 	
+(Advertiser = 'Albertsons IM' and Market = 'Boise, ID') or 	
+(Advertiser = 'Kroger ATL' and Market = 'Atlanta, GA')
+
+#######################################################################################
+use MasterClientCoverage
+go
+
+--select * from retmktpep where Advertiser = 'Fareway' and Market ='Omaha, NE'
+
+select distinct clientname, homepagelink, advertiser, market
+from MasterClientCWMPEP p, MT2sql14.sitecontrol.dbo.vw_catinfo t, retmktpep r
+where p.CategoryCodeID = t.CategoryCodeID
+and p.retmktid = r.retmktid
+and p.retmktid In
+(
+	select retmktid from retmktpep 
+	where (Advertiser = 'Hy-Vee Food Stores' and Market ='Omaha, NE') or
+(Advertiser = 'Fareway' and Market ='Omaha, NE') or
+(Advertiser = 'ShopRite' and Market ='Newark, NJ') or
+(Advertiser = 'Total Wine' and Market ='Fort Myers, FL') or
+(Advertiser = 'Total Wine' and Market ='Minneapolis, MN') or
+(Advertiser = 'Table & Vine' and Market = 'Springfield, MA') or 	
+(Advertiser = 'Armanetti Beverage Mart' and Market = 'Chicago, IL') or 	
+(Advertiser = 'Rouses' and Market = 'New Orleans, LA') or
+(Advertiser = 'The Still' and Market = 'Lincoln, NE') or 	
+(Advertiser = 'Food City (K-VA-T)' and Market = 'Knoxville, TN') or 	
+(Advertiser = 'Jewel-Osco (NAI)' and Market = 'Chicago, IL') or 	
+(Advertiser = 'Gerrity''s Supermarkets' and Market = 'Wilkes Barre, PA') or
+(Advertiser = 'Total Wine' and Market = 'Atlanta, GA') or
+(Advertiser = 'Longs Drug (Hawaii)' and Market = 'Honolulu, HI') or 	
+(Advertiser = 'Price Chopper (Kansas City)' and Market = 'Kansas City, MO') or 	
+(Advertiser = 'King Soopers' and Market = 'Denver, CO') or 	
+(Advertiser = 'ValuMarket' and Market = 'Louisville, KY') or
+(Advertiser = 'Total Wine' and Market = 'Miami, FL') or
+(Advertiser = 'Total Wine' and Market = 'Fort Worth, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Charlotte, NC') or 
+(Advertiser = 'Total Wine' and Market = 'Phoenix, AZ') or 
+(Advertiser = 'Total Wine' and Market = 'Dallas, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Austin, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Tampa, FL') or 
+(Advertiser = 'Total Wine' and Market = 'San Antonio, TX') or 
+(Advertiser = 'Total Wine' and Market = 'Newark, NJ') or 
+(Advertiser = 'Total Wine' and Market = 'Las Vegas, NV') or 
+(Advertiser = 'Total Wine' and Market = 'Anaheim, CA') or 
+(Advertiser = 'Total Wine' and Market = 'Sacramento, CA') or 
+(Advertiser = 'Total Wine' and Market = 'Seattle, WA') or 
+(Advertiser = 'Total Wine' and Market = 'Orlando, FL') or 
+(Advertiser = 'Total Wine' and Market = 'Jacksonville, FL') or 
+(Advertiser = 'Fry''s Food & Drug Stores' and Market = 'Phoenix, AZ') or 	
+(Advertiser = 'Price Cutter' and Market = 'Springfield, MO') or 	
+(Advertiser = 'Roche Bros' and Market = 'Boston, MA') or 	
+(Advertiser = 'Boyers Food Markets' and Market = 'Wilkes Barre, PA') or 
+(Advertiser = '5 Star Nash' and Market = 'Toledo, OH') or 	
+(Advertiser = 'S&V Liquors' and Market = 'Fort Wayne, IN') or 	
+(Advertiser = 'Hy-Vee Food Stores' and Market = 'Des Moines, IA')  or
+(Advertiser = 'Coborn''s ' and Market = 'Saint Cloud, MN') or
+(Advertiser = 'Binny''s Beverage Depot' and Market = 'Chicago, IL') or 	
+(Advertiser = 'Smith''s Food & Drug' and Market = 'Las Vegas, NV') or 	
+(Advertiser = 'Rite Aid' and Market = 'Baltimore, MD') or 	
+(Advertiser = 'Fareway' and Market = 'Des Moines, IA') or 	
+(Advertiser = 'Albertsons IM' and Market = 'Boise, ID') or 	
+(Advertiser = 'Kroger ATL' and Market = 'Atlanta, GA')
+)
+order by advertiser, market, clientname

@@ -1,0 +1,36 @@
+==========================================================================
+== Count AdBlocks media wise
+==========================================================================
+use MasterACFV
+go
+
+select media, count(distinct OriginalPagedetailid)
+from MasterACFV..ACFVDetailReports
+where addate between '01/01/2021' and '11/30/2021'
+Group by media
+order by media
+
+==========================================================================
+== Count Private Brand 
+==========================================================================
+
+use MasterACFV
+go
+
+select count(distinct OriginalPagedetailid)
+from MasterACFV..ACFVDetailReports
+where addate between '01/01/2021' and '11/30/2021'
+and ACPrivateBrand = 1
+
+---------------------------------
+- Month wise count
+---------------------------------
+
+use MasterACFV
+go
+
+select count(distinct OriginalPagedetailid)
+from MasterACFV..ACFVDetailReports with (nolock)
+where year(addate) = 2020
+and month(addate) = 1 
+and ACPrivateBrand = 1
