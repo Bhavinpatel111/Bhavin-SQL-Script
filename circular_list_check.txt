@@ -1,0 +1,117 @@
+-- without store
+Select 
+		c.retailer_i, mjr.city_nm, mjr.state_c, mjr.major_city_i,  c.circ_i,   c.circ_tp_c, c.start_dt,
+		count(*) cnt,
+		ROW_NUMBER() OVER (PARTITION BY c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i,  c.circ_tp_c, c.start_dt	ORDER BY count(*) desc, c.circ_i) RowNum
+	
+From adcentry.dbo.adCircular c
+Left join adcentry.dbo.ad_circular_store cs on c.circ_i = cs.circ_i			
+Join ADCEntry.dbo.adCircular_city cc on c.circ_i = cc.circ_i				
+Join adcentry.dbo.city ct on ct.city_i = cc.city_i
+Join adcentry.dbo.city mjr on ct.major_city_i = mjr.city_i
+Join ACFVLog.dbo.ACFVRetMKTImport rm on c.retailer_i = rm.retailer_i and mjr.city_i = rm.city_i and mjr.state_i = rm.state_i
+	
+Where	c.circ_i In (Select circ_i From adcentry.dbo.ad_circular_log where create_dt >= '01/01/2019'  And log_tp_i = 9)
+		And c.circ_tp_c Not In ('T','M','P','4','5','6','1','2','3','B') 
+		And cs.circ_i is Null	
+		--And c.circ_i Not In (Select circ_i From ' + @dbName + '.dbo.circular_list_s)
+		And c.retailer_i != 1317662
+and c.circ_i IN (2969984)
+Group By c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i, c.circ_i,  c.circ_tp_c, c.start_dt
+
+--=====================================================================================================================
+-- Store
+;with CircPicker As
+	(
+		Select 
+				c.retailer_i, mjr.city_nm, mjr.state_c, mjr.major_city_i,  c.circ_i,   c.circ_tp_c, c.start_dt,
+				count(*) cnt,
+				ROW_NUMBER() OVER (PARTITION BY c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i,  c.circ_tp_c, c.start_dt ORDER BY count(*) desc, c.circ_i) RowNum
+	
+		From adcentry.dbo.adCircular c 
+		Join adcentry.dbo.ad_circular_store cs on c.circ_i = cs.circ_i 
+		Join ADCEntry.dbo.ad_retailer_store ars on cs.store_i = ars.store_i
+		Join adcentry.dbo.city ct on ct.city_i = ars.city_i
+		Join adcentry.dbo.city mjr on ct.major_city_i = mjr.city_i
+		Join ACFVLog.dbo.ACFVRetMKTImport rm on c.retailer_i = rm.retailer_i and mjr.city_i = rm.city_i and mjr.state_i = rm.state_i
+		Where	c.circ_i In (Select circ_i From adcentry.dbo.ad_circular_log where create_dt >= '04/01/2021' And log_tp_i = 9)
+		And	c.circ_tp_c Not In ('T','P','4','5','6','1','2','3','B') 
+		And c.retailer_i != 1317662
+		And c.circ_i in (3840588, 3873825, 3923774)
+		Group By c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i, c.circ_i,  c.circ_tp_c, c.start_dt
+	)
+	SELECT	Distinct 
+			circ_i
+			, retailer_i
+			, state_c
+			, major_city_i
+			--, Concat(Convert(Varchar(20),retailer_i),Convert(varchar(20),major_city_i)) as RetMktId  -- Need To Discuss
+			, (city_nm + ', ' + state_c) As Market
+			, circ_tp_c
+			, start_dt
+	FROM CircPicker
+	WHERE RowNum = 1
+
+--=====================================================================================================================
+
+-- Email Promotion
+Select c.retailer_i, mjr.city_nm, mjr.state_c, mjr.major_city_i,  c.circ_i,   c.circ_tp_c, c.start_dt, count(*) cnt	
+From adcentry.dbo.adCircular c
+Left join adcentry.dbo.ad_circular_store cs on c.circ_i = cs.circ_i		
+Join ADCEntry.dbo.adCircular_city cc on c.circ_i = cc.circ_i				
+Join adcentry.dbo.city ct on ct.city_i = cc.city_i
+Join adcentry.dbo.city mjr on ct.major_city_i = mjr.city_i
+Join ACFVLog.dbo.ACFVRetMKTImport rm on c.retailer_i = rm.retailer_i and mjr.city_i = rm.city_i and mjr.state_i = rm.state_i
+	
+Where	c.circ_i In (Select circ_i From adcentry.dbo.ad_circular_log where create_dt >= '01/01/2019' And log_tp_i = 9)
+And (c.circ_tp_c  In ('M') or c.retailer_i = 1317662)
+And cs.circ_i is Null	
+and c.circ_i IN (2969984)
+Group By c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i, c.circ_i,  c.circ_tp_c, c.start_dt
+
+--=====================================================================================================================
+
+-- Bonus Page Store
+
+Select 
+c.retailer_i, mjr.city_nm, mjr.state_c, mjr.major_city_i,  c.circ_i,   c.circ_tp_c, c.start_dt,c.circ_week_dt,
+count(*) cnt,
+ROW_NUMBER() OVER (PARTITION BY c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i,  c.circ_tp_c, c.start_dt,c.circ_week_dt ORDER BY count(*) desc, c.circ_i) RowNum
+	
+From adcentry.dbo.adCircular c 
+Join adcentry.dbo.ad_circular_store cs on c.circ_i = cs.circ_i 
+Join ADCEntry.dbo.ad_retailer_store ars on cs.store_i = ars.store_i
+Join adcentry.dbo.city ct on ct.city_i = ars.city_i
+Join adcentry.dbo.city mjr on ct.major_city_i = mjr.city_i
+Join ACFVLog.dbo.ACFVRetMKTImport rm on c.retailer_i = rm.retailer_i and mjr.city_i = rm.city_i and mjr.state_i = rm.state_i
+		
+Where	c.circ_i In (Select circ_i From adcentry.dbo.ad_circular_log where create_dt >= '01/01/2019' And log_tp_i = 9)
+And	c.circ_tp_c  In ('P','4','5','6','1','2','3','B') 
+And c.retailer_i != 1317662
+and c.circ_i IN (2969984)
+
+Group By c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i, c.circ_i,  c.circ_tp_c, c.start_dt,c.circ_week_dt
+
+--=====================================================================================================================
+
+-- Bonus Page without Store
+
+Select 
+c.retailer_i, mjr.city_nm, mjr.state_c, mjr.major_city_i,  c.circ_i,   c.circ_tp_c, c.start_dt,c.circ_week_dt,
+count(*) cnt,
+ROW_NUMBER() OVER (PARTITION BY c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i,  c.circ_tp_c, c.start_dt,c.circ_week_dt ORDER BY count(*) desc, c.circ_i) RowNum
+	
+From adcentry.dbo.adCircular c
+Left join adcentry.dbo.ad_circular_store cs on c.circ_i = cs.circ_i			
+Join ADCEntry.dbo.adCircular_city cc on c.circ_i = cc.circ_i				
+Join adcentry.dbo.city ct on ct.city_i = cc.city_i
+Join adcentry.dbo.city mjr on ct.major_city_i = mjr.city_i
+Join ACFVLog.dbo.ACFVRetMKTImport rm on c.retailer_i = rm.retailer_i and mjr.city_i = rm.city_i and mjr.state_i = rm.state_i
+		
+Where	c.circ_i In (Select circ_i From adcentry.dbo.ad_circular_log where create_dt >= '01/01/2019' And log_tp_i = 9)
+And	c.circ_tp_c  In ('P','4','5','6','1','2','3','B') 
+And cs.circ_i is Null
+And c.retailer_i != 1317662
+and c.circ_i IN (2969984)
+
+Group By c.retailer_i, mjr.city_nm,  mjr.state_c, mjr.major_city_i, c.circ_i,  c.circ_tp_c, c.start_dt,c.circ_week_dt

@@ -1,0 +1,26 @@
+use MasterACFV
+
+select * from sys.dm_exec_query_stats qs
+cross apply sys.dm_exec_sql_text(qs.sql_handle) st
+where st.dbid = DB_ID()
+
+-- Space Utilize by Database
+select db.database_id, count(1)/128
+from sys.dm_os_buffer_descriptors db
+where db.database_id = DB_ID()
+Group by db.database_id 
+
+-- Memory use by Object
+select db.database_id, o.name, count(1)/128
+from sys.dm_os_buffer_descriptors db
+Join sys.allocation_units au on au.allocation_unit_id = db.allocation_unit_id
+Join sys.partitions p on p.hobt_id = au.container_id
+Join sys.objects o on o.object_id = p.object_id
+where database_id = DB_ID()
+and o.type != 'S'
+Group by db.database_id, o.name
+
+select * from sys.dm_os_process_memory 
+
+select * from sys.dm_os_memory_clerks
+

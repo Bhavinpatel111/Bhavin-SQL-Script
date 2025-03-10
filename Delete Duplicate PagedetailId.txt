@@ -1,0 +1,99 @@
+use MasterMappingTables
+
+select OriginalPageDetailID,MadCode,Page, ACRetMktId, ACCatId, RetMktID, count(1) Cnt
+Into Tempdb..Temp_MasterMapPageDetailID_Dup
+from MasterMapPageDetailID with (nolock) where TYPEID = 1
+Group by OriginalPageDetailID,MadCode,Page, ACRetMktId, ACCatId, RetMktID
+having count(1)>1
+
+-- For 2 Duplicate page Get pagedetailid for delete 
+use MasterMappingTables
+
+select OriginalPageDetailID,MadCode,Page, ACRetMktId, ACCatId, RetMktID, count(1) Cnt,
+Min(PageDetailID) Keep_PageDetailID, Max(PageDetailID) Delete_PageDetailID
+Into Tempdb..Temp_MasterMapPageDetailID_Dup
+from MasterMapPageDetailID with (nolock) where TYPEID = 1
+Group by OriginalPageDetailID,MadCode,Page, ACRetMktId, ACCatId, RetMktID
+having count(1) = 2 
+
+-- Create Temp table for delete pagedetail
+select Delete_pagedetailid
+INto Tempdb..Temp_MasterMapPageDetailID_Dup_delete
+from Tempdb..Temp_MasterMapPageDetailID_Dup
+
+use MasterMappingTables
+
+Delete a 
+from MasterMapPageDetailID a Join Tempdb..Temp_MasterMapPageDetailID_Dup b
+on a.PageDetailID = b.Delete_PageDetailID
+where TYPEID = 1
+
+use MasterMappingTables
+
+Delete a 
+--select count(1)
+from MasterMapPageDetailID a Join Tempdb..Temp_MasterMapPageDetailID_Dup_delete b
+on a.PageDetailID = b.Delete_PageDetailID
+
+
+================================================================
+
+select * into Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete
+from mt2sql13.Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete
+
+use masteracfv
+
+select count(1)
+From Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete a Join Acfvdetailreports b
+on a.Delete_pagedetailid = b.pagedetailid
+
+
+Delete b
+From Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete a Join Acfvdetailreports b
+on a.Delete_pagedetailid = b.pagedetailid
+
+Drop table Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete
+
+===============================================
+Client delete
+
+use SQL06
+
+select Name, 'Delete a From ' + Name + ' a Join Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete b on a.pagedetailid = b.Delete_pagedetailid '
+from sys.sysobjects where name like '%Detailreports' and type='U'
+order by 1
+
+----------Loop
+
+Use MASTERACFV
+
+Declare @vcnt bigint = 1
+
+While @vcnt > 0 
+Begin
+	Drop table if exists #t
+
+	Select Top 10000 * into #t From Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete
+
+	Delete b
+	From #t a Join Acfvdetailreports b
+	on a.Delete_pagedetailid = b.pagedetailid
+
+
+	Delete a
+	From Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete a Join #t  b
+	on a.delete_pagedetailid = b.delete_pagedetailid
+
+	Set @vcnt = (select Count(1) From Tempdb.dbo.Temp_MasterMapPageDetailID_Dup_delete)
+End 
+
+
+
+-------------------------------------
+-- Null Retail market
+-------------------------------------
+
+select top 1 * from MasterMappingTables..MasterMapPageDetailID with (nolock) 
+where TYPEID = 1
+and ACRetMktId is null
+and RetMktID is null 

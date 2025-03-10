@@ -1,0 +1,20 @@
+
+
+-- Exec sp_adjustpublisheridentityrange @publication = 'MasterMappingTables', @table_name = 'MasterMapPageDetailID'
+
+-- Exec sp_adjustpublisheridentityrange Null, @table_name = 'MasterMapPageDetailID'
+
+
+-- SELECT IDENT_CURRENT ('MasterMapPageDetailID')
+
+-- change identity value
+-- DBCC CHECKIDENT('MasterMapPageDetailID','reseed', 3459428127) 
+
+
+ select subscriber, range_begin, range_end, max_used, next_range_begin, next_range_end, time_of_allocation
+  from distribution..MSmerge_identity_range_allocations
+ where  article = 'MasterMapPageDetailID'
+ --and 3511205090 between range_begin and range_end
+ order  by range_begin desc, time_of_allocation desc
+
+

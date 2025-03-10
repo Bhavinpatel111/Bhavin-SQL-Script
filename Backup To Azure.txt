@@ -1,0 +1,44 @@
+-- ## backup
+BACKUP DATABASE ACFVINCRCWM
+TO URL = N'https://promodatabasebackup.blob.core.windows.net/backups/MT2SQL13/ACFVINCRCWM.bak' 
+WITH CREDENTIAL = 'Credpromodatabasebackup', INIT, COMPRESSION, NOUNLOAD, FORMAT, SKIP, STATS = 1;
+
+-- ## Restore
+RESTORE DATABASE ACFVINCRCWM 
+FROM URL = N'https://promodatabasebackup.blob.core.windows.net/backups/MT2SQL13/ACFVINCRCWM.bak'
+WITH CREDENTIAL = 'Credpromodatabasebackup', 
+MOVE N'ACFVINCRCWM' To N'D:\SQLDATA\ACFVINCRCWM.mdf', 
+MOVE N'ACFVINCRCWM_Log' To N'D:\SQLDATA\ACFVINCRCWM.ldf',
+Recovery, Replace
+
+
+	-- Restore From Azure Location
+	-- Credential to access Azure Storage location
+	DECLARE @TSQL AS NVARCHAR(MAX)
+	,@StorageAccountName AS VARCHAR(MAX)
+	,@StorageKey AS NVARCHAR(MAX)
+	,@CredentialName AS SYSNAME
+	,@isDebug bit = 0;
+	
+	SELECT @StorageAccountName = 'stdiagpromointeldb';--- Find this from Azure Portal
+	SELECT @StorageKey = 'HOsM7sMowUvAhJv+6y0YS/w8Ema+99f33PkOzOCWMm33zc8CJ+oj20/YSvY1ApVnNzRpv1u9Qt+NlypMptb5fQ==';--- Find this from Azure Portal
+	SELECT @CredentialName = 'Cred' + @StorageAccountName;
+
+	-- Database Restore
+	Declare @URL Nvarchar(Max),
+				@DatabaseName AS SYSNAME,
+				@RestoreLoc varchar(max)
+
+	Set @DatabaseName = 'ACFVINCR'
+	Set @RestoreLoc = 'E:\SQLDATA\'
+	Set @URL = 'https://stdiagpromointeldb.blob.core.windows.net/promointeldb/DBBackups/ACFVINCR_Dec_18_2022_12_48AM.bak'
+
+		SELECT @TSQL = 'RESTORE DATABASE [' + @DatabaseName + '] FROM URL = N'''
+		SELECT @TSQL += @URL
+		SELECT @TSQL += ''' WITH CREDENTIAL = ''' + @CredentialName +''', 
+				MOVE N''' + @DatabaseName + ''' To N''' + @RestoreLoc + @DatabaseName + '.mdf'', 
+				MOVE N''' + @DatabaseName + '_Log'' To N''' + @RestoreLoc + @DatabaseName + '_Log.ldf'',
+				Recovery, Replace'
+
+			Print @TSQL
+	

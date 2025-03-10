@@ -1,0 +1,123 @@
+=========================================
+## PDT Code wise process time 
+=========================================
+--select * from mt2sql14.SiteControl.dbo.vw_catinfo where category = 'redPEP'
+
+Declare @vCategory varchar(15) = 'Milpep', @vServerName varchar(30), @vRunDate Date = Convert(Date, Getdate()),
+		@vPDTStartTime DateTime, @vPDTEndTime DateTime, @vSQL varchar(Max), @vDBName varchar(10)
+
+Select @vServerName = Clientserver From MT2SQL14.SiteControl.dbo.CategoryCode Where Category = @vCategory
+
+If @vServerName like 'MT2SQL%'
+	SET @vDBName = Right(@vServerName,5)
+
+select @vPDTStartTime = CWMStart, @vPDTEndTime = PDTEnd from Mt2sql14.Connection.dbo.NightlyProcessing
+Where sqlServer = @vDBName
+And convert(date, clientrunset) = @vRunDate
+
+If @vPDTEndTime is null
+	SET @vPDTEndTime = GETDATE()
+
+print @vPDTStartTime
+print @vPDTEndTime
+
+SET @vSQL = 'Select *, DATEDIFF(MINUTE,QueryTime, Endtime) Duration, Cast(CONVERT(DateTime,(Endtime-QueryTime)) As Time) Dur
+				From (
+				select ID, Details, SQL, QueryTime, lead(QueryTime,1) over ( order by id ) Endtime
+				from ' + QUOTENAME(@vServerName) + '.' + @vDBName + '.Dbo.'+'CategoryCodeLog 
+				where  CategoryCode = ''' + @vCategory + '''
+				and QueryTime >= ''' + Convert(varchar, @vPDTStartTime,121) + '''
+				and QueryTime <= ''' + Convert(varchar, @vPDTEndTime,121) + '''
+				) a
+				order by 1  
+				'
+
+Exec (@vSQL)
+
+=========================================
+## PDT all code overall time detail 
+=========================================
+
+USE PEP00
+
+Declare @vStartTime DateTime, @vEndTime DateTime, @vServerName varchar(50) = @@serverName, @vRunDate Date = '01/01/2023'
+
+SET @vServerName = 'SQL06'
+Set @vRunDate = DATEADD(DD,-1, @vRunDate)
+
+Print @vServerName
+
+select @vStartTime = PDTStart, @vEndTime = PDTEnd from Mt2sql14.Connection.dbo.NightlyProcessing
+Where sqlServer = @vServerName
+And convert(date,clientrunset) = @vRunDate
+
+If @vEndTime is null
+	SET @vEndTime = GETDATE()
+
+print @vStartTime
+print @vEndTime
+
+Select * ,  Convert(time, (ProceEnd - ProceStart)) Duration
+From (
+select CategoryCode, Min(QueryTime) ProceStart, Max(QueryTime) ProceEnd from CategoryCodeLog 
+where Details In ( 'PDT Start','End PDT')
+and CategoryCode is not null 
+and QueryTime >= @vStartTime
+AND QueryTime <= @vEndTime
+Group by CategoryCode
+--order by 1 desc 
+) a 
+order by 1 
+
+============================
+## CWM 
+============================
+
+USE SQL13
+
+Declare @vStartTime DateTime, @vEndTime DateTime, @vServerName varchar(50) = @@serverName, @vRunDate Date = Getdate()
+
+Set @vRunDate = DATEADD(DD,-1, @vRunDate)
+
+Print @vRunDate
+
+select @vStartTime = cwmStart, @vEndTime = cwmEnd from Mt2sql14.Connection.dbo.NightlyProcessing
+Where sqlServer = 'SQL13'
+And convert(date,clientrunset) = @vRunDate
+
+If @vEndTime is null
+	SET @vEndTime = GETDATE()
+
+print @vStartTime
+print @vEndTime
+
+Select * ,  Convert(time, (ProceEnd - ProceStart)) Duration
+From (
+select CategoryCode, Min(QueryTime) ProceStart, Max(QueryTime) ProceEnd from CategoryCodeLog 
+where (Details like 'StartCWM for%' or Details like 'End: Custom Update SP for%' or Details  like 'END CreateClientCWMTable%')
+and CategoryCode is not null 
+and QueryTime >= @vStartTime
+AND QueryTime <= @vEndTime
+Group by CategoryCode
+--order by 1 desc 
+) a 
+order by 4 desc
+
+
+===============================================================================================
+### For Basic Server timing check
+===============================================================================================
+
+Select * From (
+Select *, DATEDIFF(MI, StartTime, EndTime) Duration
+From (
+select CategoryCode, Min(QueryTime) StartTime, Max(QueryTime) EndTime
+from SQL17..CategoryCodeLog 
+where QueryTime >= '2024-04-01 23:59:00'
+ANd QueryTime <= '2024-04-02 09:35:00'
+Group By CategoryCode
+ ) X
+ ) Y
+ Order by Duration Desc 
+
+===============================================================================================

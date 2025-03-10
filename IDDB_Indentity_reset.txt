@@ -1,0 +1,28 @@
+--This is how fix this errors on IDDB setting.
+--Find unique missing values from IDDB
+Select count(distinct  IsNull(detail.Offer, ''))
+From tar50MPVOffer detail
+left outer join IDDB.dbo.Offer id on id.Offer=detail.Offer
+where id.Offer is null
+and detail.Offer is not null
+
+
+--Can insert them up to 10,000 at a time per replication - I like to do 9000
+Insert Into IDDB.dbo.Offer (Offer) 
+Select distinct top 9000 IsNull(detail.Offer, '')
+From tar50MPVOffer detail
+left outer join IDDB.dbo.Offer id on id.Offer=detail.Offer
+where id.Offer is null
+and detail.Offer is not null
+
+
+--Once the first set is in, we  need to tell replication on iddb on mt3sql13 (publisher) to reset redo the identity set for the column with 
+
+execute sp_adjustpublisheridentityrange null, MasterMapPageDetailID
+
+--Wait a few seconds and try the above insert again
+
+--Repeat until all values are cleared.
+
+--Can replace Offer with any column we have this trouble with.
+--Would have to restart the conversion at this time (no easy way to start it off where it was currently)

@@ -1,0 +1,29 @@
+Declare @vFlag Bit = 0, @vDate varchar(10) = Replace(Convert(varchar, Getdate(),102),'.',''),
+	@vJobName varchar(200) = 'Database Backups to Azure'
+
+While Exists (
+	SELECT activity.run_requested_date, 
+		DATEDIFF( SECOND, activity.run_requested_date, GETDATE() ) as Elapsed
+	FROM msdb.dbo.sysjobs_view job
+	JOIN msdb.dbo.sysjobactivity activity ON job.job_id = activity.job_id
+	JOIN msdb.dbo.syssessions sess ON sess.session_id = activity.session_id
+	JOIN(
+		SELECT MAX( agent_start_date ) AS max_agent_start_date
+		FROM msdb.dbo.syssessions) sess_max ON sess.agent_start_date = sess_max.max_agent_start_date
+	WHERE run_requested_date IS NOT NULL AND stop_execution_date IS NULL
+		and job.name = @vJobName
+) 
+Begin
+	Print 'Job : "' + @vJobName + '" is currently Running.'
+	WaitFor Delay '00:05:00'
+End
+
+-- ### Check process status
+select @vFlag = run_status
+from msdb..sysjobhistory h
+Join msdb..sysjobs j on j.job_id = h.job_id
+where j.name = @vJobName
+and run_date = @vDate
+and step_id = 0
+
+Print @vFlag

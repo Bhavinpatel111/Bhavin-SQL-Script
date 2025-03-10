@@ -1,0 +1,291 @@
+Use MasterACFV --ACFVINCR
+
+Declare @DBid int, @DBName varchar(100)
+Select @DBid = DB_ID(), @DBName = DB_NAME()
+
+select --SCHEMA_NAME(o.schema_id) ObjectSchema,
+		OBJECT_NAME(i.object_id) ObjectName,
+		o.create_date,
+		i.name IndexName,
+		Case When i.is_unique = 1 Then 'Unique' Else '' End + i.type_desc 'Index Type',
+		sz.Index_Size AS [Index_Size_MB],
+		ddius.user_seeks,
+		ddius.user_scans,
+		ddius.user_lookups,
+		ddius.user_updates,
+		Rp.[Rows Count],
+		Case
+			When i.type = 2 And i.is_unique = 0 Then
+				'Drop Index ' + i.name + ' On ' + @DBName + '.' + SCHEMA_NAME(o.schema_id) + '.' + OBJECT_NAME(ddius.object_id) + ';'
+			When i.type = 2 And i.is_unique = 1 Then
+				'Alter Table '+ @DBName + '.' + SCHEMA_NAME(o.schema_id) + '.' + OBJECT_NAME(ddius.object_id) + ' Drop Constraint ' + i.name + ';'
+		End As 'SQL Drop Statement'
+from sys.indexes AS i
+Inner Join Sys.dm_db_index_usage_stats As ddius On ddius.index_id = i.index_id and i.object_id = ddius.object_id
+Inner Join sys.objects As o on o.object_id = ddius.object_id
+Inner Join ( Select object_id, index_id, Sum(rows) As 'Rows Count', Count(partition_id) As 'Partition Count'
+				From sys.partitions
+				Group By object_id, index_id ) Rp On Rp.index_id = i.index_id and Rp.object_id = i.object_id
+Inner Join (
+	Select ps.object_id, ps.index_id, (Sum(ps.used_page_count * 8)/1024) Index_Size
+	From sys.dm_db_partition_stats ps 
+	Group by ps.object_id, ps.index_id) sz on sz.object_id = o.object_id and sz.index_id  = i.index_id
+Where ddius.database_id = @DBid
+and o.name like 'ACFVDetailReports'
+Order by (ddius.user_seeks + ddius.user_lookups + ddius.user_scans) Desc, ddius.user_updates
+Go
+
+
+==================================================
+-- Index on Table and Index column Detail
+==================================================
+
+select i.name, ic.column_id, c.name, ic.is_included_column
+from sys.sysobjects o 
+	Join sys.indexes i On i.object_id = o.id
+	Join sys.index_columns ic on ic.index_id = i.index_id and ic.object_id = o.id
+	Join sys.columns c on c.object_id = o.id and c.column_id = ic.column_id
+where o.name = 'ACFVDetailReports'
+--and i.index_id = 2
+Order by i.index_id, ic.is_included_column, ic.index_column_id
+
+
+select i.name, STRING_AGG( case when ic.is_included_column = 0 then c.name End, ',') within group (order by ic.index_column_id asc) Index_Column,
+STRING_AGG( case when ic.is_included_column = 1 then c.name End, ',') within group (order by ic.index_column_id asc) Include_Column
+from sys.sysobjects o 
+	Join sys.indexes i On i.object_id = o.id
+	Join sys.index_columns ic on ic.index_id = i.index_id and ic.object_id = o.id
+	Join sys.columns c on c.object_id = o.id and c.column_id = ic.column_id
+where o.name = 'ACFVDetailReports'
+group by i.name
+order by i.name
+
+==================================================
+-- Query execution plan cache usage check
+==================================================
+
+SELECT cplan.usecounts, cplan.objtype, qtext.text, qplan.query_plan
+FROM sys.dm_exec_cached_plans AS cplan
+CROSS APPLY sys.dm_exec_sql_text(plan_handle) AS qtext
+CROSS APPLY sys.dm_exec_query_plan(plan_handle) AS qplan
+ORDER BY cplan.usecounts DESC
+
+==================================================
+--  returns information about the top five queries ranked by average CPU time
+==================================================
+
+SELECT TOP 5 query_stats.query_hash AS "Query Hash",   
+    SUM(query_stats.total_worker_time) / SUM(query_stats.execution_count) AS "Avg CPU Time",  
+    MIN(query_stats.statement_text) AS "Statement Text"  
+FROM   
+    (SELECT QS.*,   
+    SUBSTRING(ST.text, (QS.statement_start_offset/2) + 1,  
+    ((CASE statement_end_offset   
+        WHEN -1 THEN DATALENGTH(ST.text)  
+        ELSE QS.statement_end_offset END   
+            - QS.statement_start_offset)/2) + 1) AS statement_text  
+     FROM sys.dm_exec_query_stats AS QS  
+     CROSS APPLY sys.dm_exec_sql_text(QS.sql_handle) as ST) as query_stats  
+GROUP BY query_stats.query_hash  
+ORDER BY 2 DESC;  
+
+==================================================
+-- Returning row count aggregates for a query
+==================================================
+
+SELECT qs.execution_count,  
+    SUBSTRING(qt.text,qs.statement_start_offset/2 +1,   
+                 (CASE WHEN qs.statement_end_offset = -1   
+                       THEN LEN(CONVERT(nvarchar(max), qt.text)) * 2   
+                       ELSE qs.statement_end_offset end -  
+                            qs.statement_start_offset  
+                 )/2  
+             ) AS query_text,   
+     qt.dbid, dbname= DB_NAME (qt.dbid), qt.objectid,   
+     qs.total_rows, qs.last_rows, qs.min_rows, qs.max_rows  
+FROM sys.dm_exec_query_stats AS qs   
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS qt   
+WHERE qt.text like '%SELECT%'   
+ORDER BY qs.execution_count DESC; 
+
+
+=======================================================================
+-- Index Statistics
+=======================================================================
+
+use MasterACFV
+
+SELECT
+SUBSTRING(sqltext.text, (deqs.statement_start_offset / 2) + 1,
+(CASE deqs.statement_end_offset
+WHEN -1 THEN DATALENGTH(sqltext.text)
+ELSE deqs.statement_end_offset
+END - deqs.statement_start_offset) / 2 + 1) AS sqltext,
+deqs.execution_count,
+deqs.total_logical_reads/execution_count AS avg_logical_reads,
+deqs.total_logical_writes/execution_count AS avg_logical_writes,
+deqs.total_worker_time/execution_count AS avg_cpu_time,
+deqs.last_elapsed_time/execution_count AS avg_elapsed_time,
+deqs.total_rows/execution_count AS avg_rows,
+deqs.creation_time,
+deqs.last_execution_time,
+CAST(query_plan AS xml) as plan_xml
+FROM sys.dm_exec_query_stats as deqs
+CROSS APPLY sys.dm_exec_text_query_plan
+(deqs.plan_handle, deqs.statement_start_offset, deqs.statement_end_offset)
+as detqp
+CROSS APPLY sys.dm_exec_sql_text(deqs.sql_handle) AS sqltext
+WHERE detqp.query_plan like '%idx_acfvupcmastercsv%'
+ORDER BY deqs.last_execution_time DESC
+OPTION (MAXDOP 1, RECOMPILE);
+GO
+
+==========================================================
+-- Index Fragmentation detail
+==========================================================
+
+use MasterACFV
+
+select i.name, x.avg_fragmentation_in_percent
+from sys.tables o
+Join sys.indexes i on i.object_id = o.object_id
+Join sys.dm_db_index_physical_stats(DB_ID(), null, null,null, null) x on x.object_id = o.object_id and i.index_id = x.index_id
+where o.name = 'acfvdetailreports'
+and x.database_id = DB_ID()
+and i.name is not null
+and x.avg_fragmentation_in_percent > 0 
+
+
+SELECT [object_id]                  AS objectid, object_name(object_id) Tablename,
+       index_id                     AS indexid, 
+       partition_number             AS partitionnum, 
+       avg_fragmentation_in_percent AS frag, 
+       page_count 
+FROM   sys.Dm_db_index_physical_stats (Db_id(), NULL, NULL, NULL, N'LIMITED') 
+WHERE  avg_fragmentation_in_percent > 10.0 
+       AND index_id > 0 
+       AND page_count > 50; 
+
+==========================================================
+
+SELECT DB_NAME(vfs.DbId) DatabaseName, mf.name,
+mf.physical_name, vfs.BytesRead, vfs.BytesWritten,
+vfs.IoStallMS, vfs.IoStallReadMS, vfs.IoStallWriteMS,
+vfs.NumberReads, vfs.NumberWrites,
+(Size*8)/1024 Size_MB
+FROM ::fn_virtualfilestats(NULL,NULL) vfs
+INNER JOIN sys.master_files mf ON mf.database_id = vfs.DbId
+AND mf.FILE_ID = vfs.FileId
+GO
+
+=========================================================
+-- Rebuild/ Reorganize Index 
+=========================================================
+
+use SQL16
+
+
+select t.name, case when ps.avg_fragmentation_in_percent > 30 then	
+	'Alter Index '  + i.name + ' on ' + t.name + ' REBUILD PARTITION = ALL WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON)'
+else
+	'Alter Index '  + i.name + ' on ' + t.name + ' REORGANIZE WITH ( LOB_COMPACTION = ON )'
+end Action_Take,
+
+ps.avg_fragmentation_in_percent, ps.page_count, i.type_desc, i.*
+from sys.tables t 
+Join sys.indexes i on t.object_id = i.object_id
+Cross apply sys.dm_db_index_physical_stats(DB_ID(),t.object_id,null,null,null) ps
+where t.name like '%AdBlockReports'
+and i.index_id>0
+and ps.avg_fragmentation_in_percent> 10
+order by ps.page_count
+
+-----------------------------------------------------------------------------------
+-- Disk I/O latency check
+-----------------------------------------------------------------------------------
+
+SELECT   LEFT(mf.physical_name,100),
+ReadLatency = CASE WHEN num_of_reads = 0 THEN 0 ELSE (io_stall_read_ms / num_of_reads) END, 
+WriteLatency = CASE WHEN num_of_writes = 0 THEN 0 ELSE (io_stall_write_ms / num_of_writes) END, 
+AvgLatency =  CASE WHEN (num_of_reads = 0 AND num_of_writes = 0) THEN 0 
+ELSE (io_stall / (num_of_reads + num_of_writes)) END,
+LatencyAssessment = CASE WHEN (num_of_reads = 0 AND num_of_writes = 0) THEN 'No data' ELSE 
+CASE WHEN (io_stall / (num_of_reads + num_of_writes)) < 2 THEN 'Excellent' 
+WHEN (io_stall / (num_of_reads + num_of_writes)) BETWEEN 2 AND 5 THEN 'Very good' 
+WHEN (io_stall / (num_of_reads + num_of_writes)) BETWEEN 6 AND 15 THEN 'Good' 
+WHEN (io_stall / (num_of_reads + num_of_writes)) BETWEEN 16 AND 100 THEN 'Poor'
+WHEN (io_stall / (num_of_reads + num_of_writes)) BETWEEN 100 AND 500 THEN  'Bad'
+ELSE 'Deplorable' END  END, 
+[Avg KBs/Transfer] =  CASE WHEN (num_of_reads = 0 AND num_of_writes = 0) THEN 0 
+ELSE ((([num_of_bytes_read] + [num_of_bytes_written]) / (num_of_reads + num_of_writes)) / 1024) END, 
+LEFT (mf.physical_name, 2) AS Volume, 
+LEFT(DB_NAME (vfs.database_id),32) AS [Database Name]
+FROM sys.dm_io_virtual_file_stats (NULL,NULL) AS vfs 
+JOIN sys.master_files AS mf ON vfs.database_id = mf.database_id 
+AND vfs.file_id = mf.file_id 
+ORDER BY AvgLatency DESC
+
+###################################################################################
+-----------------------------------------------------------------------------------
+-- ## executing session detail ##
+-----------------------------------------------------------------------------------
+
+select s.session_id, qp.query_plan, st.text, s.host_name, r.start_time, r.status, r.wait_type, r.last_wait_type, r.dop, r.parallel_worker_count
+, qmg.requested_memory_kb, qmg.granted_memory_kb
+from sys.dm_exec_sessions s
+Join sys.dm_exec_requests r on s.session_id = r.session_id
+Cross apply sys.dm_exec_query_plan(r.plan_handle) qp
+cross apply sys.dm_exec_sql_text(r.sql_handle) st
+Left Join sys.dm_exec_query_memory_grants qmg on qmg.session_id = r.session_id
+--cross apply sys.dm_exec_text_query_plan(r.plan_handle, r.statement_start_offset, r.statement_end_offset) tqp
+where s.is_user_process = 1 
+
+---
+select r.dop,t.task_address,t.task_state,t.scheduler_id,t.exec_context_id,t.worker_address,t.parent_task_address 
+, d.*
+from sys.dm_exec_requests r 
+Join sys.dm_os_tasks t on t.session_id = r.session_id
+Join sys.dm_os_workers w on w.worker_address = t.worker_address
+Join sys.dm_os_threads d on d.thread_address = w.thread_address
+where r.session_id = 72
+
+
+###################################################################################
+-- Finding the TOP N queries
+-----------------------------------------------------------------------------------
+
+SELECT TOP 5 query_stats.query_hash AS Query_Hash,   
+    SUM(query_stats.total_worker_time) / SUM(query_stats.execution_count) AS Avg_CPU_Time,  
+    MIN(query_stats.statement_text) AS Sample_Statement_Text
+FROM   
+    (SELECT QS.*,   
+    SUBSTRING(ST.text, (QS.statement_start_offset/2) + 1,  
+    ((CASE statement_end_offset   
+        WHEN -1 THEN DATALENGTH(ST.text)  
+        ELSE QS.statement_end_offset END   
+            - QS.statement_start_offset)/2) + 1) AS statement_text  
+     FROM sys.dm_exec_query_stats AS QS  
+     CROSS APPLY sys.dm_exec_sql_text(QS.sql_handle) as ST) as query_stats  
+GROUP BY query_stats.query_hash  
+ORDER BY 2 DESC;
+
+###################################################################################
+-- Returning row count aggregates for a query
+-----------------------------------------------------------------------------------
+
+SELECT qs.execution_count,  
+    SUBSTRING(qt.text,qs.statement_start_offset/2 +1,   
+                 (CASE WHEN qs.statement_end_offset = -1   
+                       THEN LEN(CONVERT(nvarchar(max), qt.text)) * 2   
+                       ELSE qs.statement_end_offset end -  
+                            qs.statement_start_offset  
+                 )/2  
+             ) AS query_text,   
+     qt.dbid, dbname= DB_NAME (qt.dbid), qt.objectid,   
+     qs.total_rows, qs.last_rows, qs.min_rows, qs.max_rows  
+FROM sys.dm_exec_query_stats AS qs   
+CROSS APPLY sys.dm_exec_sql_text(qs.sql_handle) AS qt   
+WHERE qt.text like '%SELECT%'   
+ORDER BY qs.execution_count DESC;
+
+

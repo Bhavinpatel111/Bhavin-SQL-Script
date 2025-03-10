@@ -1,0 +1,83 @@
+
+BACKUP DATABASE MasterACFVHistory
+To Disk = '\\MT2BU1\SQLBU_Archive\MasterACFVHistory.bak'  
+WITH  INIT , COMPRESSION, NOUNLOAD ,  SKIP ,  STATS = 10,  FORMAT 
+
+USE [master]
+RESTORE DATABASE [ACFVINCRCWM]
+FROM  DISK = N'\\172.29.75.160\ftp\ADEntry\ACtoFV\ACFVINCRCWM.bak'
+ WITH  FILE = 1,  
+ MOVE N'ACFVINCRCWM' TO N'S:\SQLData\ACFVINCRCWM.mdf', 
+ MOVE N'ACFVINCRCWM_Log' TO N'S:\SQLData\ACFVINCRCWM.ldf',  NOUNLOAD,  STATS = 5
+GO
+
+
+BACKUP DATABASE MasterACFV
+To Disk = '\\mt2bu2\clientbu\MasterACFV.bak'  
+WITH  INIT , COMPRESSION, NOUNLOAD ,  SKIP ,  STATS = 10,  FORMAT 
+
+---------------------------------------------------------
+-- ## Backup location master table 
+
+  select * from mt2sql14.connection.dbo.AdviewBackupLocation
+  select * from mt2sql14.connection.dbo.DBBackupLocation
+
+-- ## Restore location master table
+
+  select * from mt2sql14.connection.dbo.DBRestoreLocation
+  select * from mt2sql14.connection.dbo.AdviewRestoreLocation
+
+============================================================================================
+-- Backup Location Check
+------------------------
+select bl.BackupServer, bl.backupdatabase[DataBase], bl.BackupLocation, Adbl.ActiveLocation, Adbl.backuplocation [Adview Backup Location], Adbl.AlternateBackupLocation
+	, rl.RestoreLocation, rl.RestoreServer, rl.IndActive [Restore Active]
+from mt2sql14.connection.dbo.DBRestoreLocation rl
+join mt2sql14.connection.dbo.DBBackupLocation bl on rl.backupid = bl.id
+join mt2sql14.connection.dbo.AdviewBackupLocation Adbl on Adbl.backuptype = bl.backupserver	
+order by BackupDatabase
+
+--set identity_Insert Connection..DBBackupLocation on
+--Insert Into  Connection..DBBackupLocation(id,BackupServer,BackupDatabase,BackupLocation,IndActive)
+--	values(31,'CH2-PROPRD-DB00','PEP03','\\CH2-PROSTG-DB0.ad.numerator.com\ClientBU\',1)
+--set identity_Insert Connection..DBBackupLocation off
+
+----------------------------------------------------------------------------------------------------
+-- History Check
+----------------------------------------------------------------------------------------------------
+select C.BackupDatabase
+	, B.RestoreServer, B.RestoreLocation
+	, A.startdt, A.enddt
+	, C.BackupServer, C.BackupLocation
+from Connection..DBrestorehistory A
+Join Connection..DBRestoreLocation B On A.restoreId = B.id
+Join Connection..DBBackupLocation C On C.id = B.backupId
+order by A.id Desc
+
+use Connection
+
+select a.restoreId, Convert(smalldatetime, a.startdt) startdt, Convert(smalldatetime, a.enddt) enddt,
+	b.backupId,b.RestoreLocation,b.RestoreServer,c.BackupDatabase,c.BackupServer, DATEDIFF(MInute, startdt, a.enddt) Dur_Min,
+	b.IndActive
+from AdviewRestoreHistory a join DBRestoreLocation b
+on a.restoreId = b.id
+join DBBackupLocation c on b.backupId = c.id
+where CONVERT(date, a.startdt) >= CONVERT(Date, GETDATE() - 1)
+and a.enddt is not null 
+And b.RestoreServer = 'CH2-PROSTG-DB0'
+order by RestoreServer, startdt
+ 
+--## BAckup History
+select A.backupId, B.BackupDatabase, B.BackupLocation, B.BackupServer, A.startdt, A.enddt
+	, DATEDIFF(MINUTE,A.startdt, A.enddt) Duration
+from [MT2SQL14].Connection.dbo.DBBackupHistory A
+Join [MT2SQL14].Connection.dbo.DBBackupLocation B On B.id = A.backupId
+order by A.startdt desc
+
+============================================================================================
+-- Restore DB
+------------
+RESTORE database sql13 
+from disk ='\\mt2bu3\MT2BU3D\SQLBU\sql13.bak' with Recovery, Replace, move 'SQL13' to 'D:\SQLData\SQL13.mdf', move 'SQL13_log' to 'D:\SQLData\SQL13_log.ldf'
+
+============================================================================================

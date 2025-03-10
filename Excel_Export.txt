@@ -1,0 +1,41 @@
+
+Declare @vXLApp Int, @vTemp Int
+
+Execute @vTemp = sp_OACreate 'Excel.Application', @vXLApp Output
+
+Execute @vTemp = sp_OASetProperty @vXLApp, 'screenupdating', 'False'
+Execute @vTemp = sp_OASetProperty @vXLApp, 'DisplayAlert', 'False'
+
+Print 'Excel App Id : ' + Convert(varchar(10), @vXLApp)
+
+Declare @vWorkBooks Int, @vWorkBook Int
+Execute @vTemp = sp_OAMethod @vXLApp, 'workbooks', @vWorkBooks Output
+Execute @vTemp = sp_OAMethod @vWorkBooks, 'Add', @vWorkBook Output, -4167
+
+Print 'WorkBooks Id : ' + Convert(varchar(10), @vWorkBooks)
+Print 'Workbook Id : ' + Convert(varchar(10), @vWorkBook)
+
+Declare @vWorkSheet Int
+Execute @vTemp = sp_OAMethod @vWorkBook, 'Sheets(sheet1)', @vWorkSheet Output  
+
+Print 'Sheet Id : ' + Convert(varchar(10), @vWorkSheet)
+
+Declare @vCell Int, @vRow Int = 1 , @vColumn Int = 1
+Execute @vTemp = Sp_OAGetProperty @vWorkSheet, 'cells', @vCell Output, @vRow, @vColumn
+
+Execute @vTemp = SP_OASetProperty @vCell, 'value', 'Created'
+
+Execute @vTemp = SP_OADestroy @vCell
+
+Execute @vTemp = SP_OAMethod @vWorkBook, 'SaveAs', Null, 'D:\\abc.xls'
+
+Execute @vTemp = sp_OASetProperty @vXLApp, 'screenupdating', 'True'
+Execute @vTemp = sp_OASetProperty @vXLApp, 'DisplayAlert', 'True'
+
+Execute @vTemp = SP_OAMethod @vWorkBook, 'Close'
+Execute @vTemp = SP_OAMethod @vXLApp, 'Quit'
+
+Execute @vTemp = SP_OADestroy @vWorkSheet
+Execute @vTemp = SP_OADestroy @vWorkBook
+Execute @vTemp = SP_OADestroy @vWorkBooks
+Execute @vTemp = SP_OADestroy @vXLApp

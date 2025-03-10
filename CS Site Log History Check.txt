@@ -1,0 +1,8 @@
+use Connection
+
+select  * from CSLogLive where sql like '%Client ID:1442 CategoryCodeID 9397%' order by 1 desc
+
+select * from CoverageChangeLog where CoverageChangeId in (6784,6785,6786,6787,6788,6789)
+
+select  * from CSLogLive
+ where ActionDateTime between '2022-05-24 10:10:00' and '2022-05-24 10:30:00'  order by 1 desc

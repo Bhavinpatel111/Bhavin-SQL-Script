@@ -1,0 +1,483 @@
+XME-566A3cf0$0f34&4110!8
+-- for /r "\\CH2-PROSTG-DB0.ad.numerator.com\ClientBU\" %A in (*.bak) do @echo %~fA-%~zA
+http://clientservices.markettrack.com/activityreport/callreport.asp
+==========================================================================================
+= Reset Code for Run again in case of failure(incremental run)
+==========================================================================================
+select * from MasterACFV..PackageStepDetail where StepStatus <> 1
+
+select * from MasterACFV..CategoryCodeRunFlag where CodeStatus <> 0
+
+select * from MasterACFV..CategoryCodeRunFlag where Category in ('')
+
+update MasterACFV.dbo.CategoryCodeRunFlag
+set ClientRun = 1 , AdBlockRun = 0 , UPCRun = 0 , HTMLRun = 0 , IsFull = 0 , CodeStatus = 1
+Where Category in ( '')
+update mt2sql14.SiteControl.dbo.categorycode set cwmfull=1,ispdt=1,clientpdt=1, clientrun=1 where category = '' 
+
+-- Full code Reset 
+Update MasterACFV.dbo.CategoryCodeRunFlag 
+set ClientRun = 1 , AdBlockRun = 0 , UPCRun = 0 , HTMLRun = 0 , IsFull = 1 , Codestatus = 1 
+where category = ''
+
+==========================================================================================
+= Check circular detail Brand level
+==========================================================================================
+--insert into acfv..updated_adblock
+select a.circ_i,c.adc_i 
+from robin.adcentry.dbo.adCircular a with(nolock)
+join robin.ADCEntry.dbo.adCircularPg b with(nolock) on a.circ_i = b.circ_i
+join robin.ADCEntry.dbo.adCompare c  with(nolock) on b.circ_pg_i = c.circ_pg_i
+join robin.ADCEntry.dbo.adcompbrand d with(nolock) on d.adc_i = c.adc_i
+--JOin AdcEntry..ad_retailers r on r.retailer_i = a.retailer_i
+--Join vwACFV_catbrandproduct_modified_2 x on x.brand_i = d.brand_i
+--Join ADCEntry.dbo.brand x on x.brand_i = d.brand_i
+--Join ADCEntry.dbo.brand_hierarchy h on h.brand_i =x.brand_i
+--where a.circ_i in (2676446)
+where c.adc_i in ( 617243736)
+and a.start_dt >= '07/01/2021'
+-- and a.retailer_i = 1275551
+
+##########################################################################################
+
+select year(start_dt),b.circ_tp_c ,count(1) 
+from Robin.ACFV.dbo.Updated_adblock_parked a join robin.adcentry.dbo.adCircular b
+on a.Circ_i =b.circ_i 
+--where  year(start_dt) = 2023
+Where b.circ_tp_c = '9'
+group by year(start_dt), circ_tp_c
+
+==========================================================================================
+= Set Data limit for a day
+==========================================================================================
+select * from ACFV..MaintainDailyCount
+
+update robin.ACFV.dbo.MaintainDailyCount set Datacount = 800000 where Duration = 'Weekday'
+##########################################################################################
+==========================================================================================
+= AC Detail report table checklist
+==========================================================================================
+select count(1)From ACFVINCR.dbo.Flyer with (nolock) -- check For remaining circulars
+
+select * from ACFV..MasterTableList where TableType in ('Inner','Detail')
+and AC_Tablename IN ('ACDetailReports_1','Inner_Full_1')
+
+UpDate ACFV..MasterTableList Set isAvailable = 0 , isProcessed = 0 
+where TableType in ('Inner','Detail') and AC_Tablename IN ('ACDetailReports_1','Inner_Full_1')
+
+##########################################################################################
+
+==========================================================================================
+= Circular List Check flyer/circ_i wise. 
+==========================================================================================
+select * from ACFVINCR..circular_list where  circ_i in (2676446)
+select * from ACFVINCR..circular_list_s where  circ_i In (2676446)
+select * from ACFVINCR..circular_list_ws where  circ_i in (2676446)
+select * from ACFVINCR..circular_list_Email where  circ_i in (2676446)
+select * from ACFVINCR..circular_list_S_BP where  circ_i in (2676446)
+select * from ACFVINCR..circular_list_ws_BP where  circ_i in (2676446)
+select * from ACFVINCR..Del_Circ where  circ_i in (2676446)
+select * from ACFVINCR..Delete_Circulars_Dupes where  circ_i in (2676446)
+select * from ACFVINCR..Delete_Circulars where  circ_i in (2676446)
+select * from ACFVINCR..MasterCirc where  circ_i in (2676446)
+
+
+select * from adcentry.dbo.ad_circular_store where circ_i in (3399313)
+select * from ADCEntry.dbo.adCircular_city  where circ_i in (3399313)
+select * from adcentry.dbo.ad_circular_log where circ_i in (3399313) and log_tp_i = 9
+
+##########################################################################################
+
+==========================================================================================
+= Check circular Retailer Level 
+==========================================================================================
+
+select Distinct a.circ_i, c.adc_i
+from robin.adcentry.dbo.adCircular a with(nolock)
+join robin.ADCEntry.dbo.adCircularPg b with(nolock) on a.circ_i = b.circ_i
+join robin.ADCEntry.dbo.adCompare c  with(nolock) on b.circ_pg_i = c.circ_pg_i
+join robin.ADCEntry.dbo.adcompbrand d with(nolock) on d.adc_i = c.adc_i
+Join robin.ADCEntry.dbo.ad_retailers e with(nolock) on e.retailer_i = a.retailer_i
+Join robin.ADCEntry.dbo.ad_retailer_store s with(nolock) on s.retailer_i = e.retailer_i
+--Join ACFV..Updated_adblock_parked g on g.Circ_i = a.circ_i and g.adc_i = c.adc_i
+where a.circ_i in (2928151)
+--Where e.company_nm = 'Kroger Florida'
+
+==========================================================================================
+= Check circular Catelogry Level
+==========================================================================================
+
+select e.brand_nm, f.brand_grp_nm, h.level_nm
+from robin.adcentry.dbo.adCircular a with(nolock)
+join robin.ADCEntry.dbo.adCircularPg b with(nolock) on a.circ_i = b.circ_i
+join robin.ADCEntry.dbo.adCompare c  with(nolock) on b.circ_pg_i = c.circ_pg_i
+join robin.ADCEntry.dbo.adcompbrand d with(nolock) on d.adc_i = c.adc_i
+join robin.ADCEntry.dbo.brand e with(nolock) on e.brand_i = d.brand_i
+join robin.ADCEntry.dbo.brand_grp f with(nolock) on f.brand_grp_i = e.brand_grp_i
+join robin.ADCEntry.dbo.brand_hierarchy g with(nolock) on g.brand_i = e.brand_i
+join robin.ADCEntry.dbo.adHierarchy h with(nolock) on h.level_i = g.level_i		-- Category
+where c.adc_i = 418004917
+
+##########################################################################################
+
+==========================================================================================
+= Insert circular For Data Pull 
+==========================================================================================
+
+Insert into robin.ACFV.dbo.updated_adblock
+select distinct a.circ_i,c.adc_i 
+from robin.adcentry.dbo.adCircular a with(nolock)
+join robin.ADCEntry.dbo.adCircularPg b with(nolock) on a.circ_i = b.circ_i
+join robin.ADCEntry.dbo.adCompare c  with(nolock) on b.circ_pg_i = c.circ_pg_i
+where a.circ_i in (2458405)
+
+##########################################################################################
+
+==========================================================================================
+= Insert circular For Data Pull For Incremental CWM
+==========================================================================================
+
+Insert into robin.ACFV.dbo.INCR_updated_adblock
+select distinct a.circ_i,c.adc_i 
+from robin.adcentry.dbo.adCircular a with(nolock)
+join robin.ADCEntry.dbo.adCircularPg b with(nolock) on a.circ_i = b.circ_i
+join robin.ADCEntry.dbo.adCompare c  with(nolock) on b.circ_pg_i = c.circ_pg_i
+where a.circ_i in (2458405)
+
+##########################################################################################
+
+==========================================================================================
+= Insert For Full retmkt on robin
+==========================================================================================
+
+Insert into robin.acfv.dbo.ACFVRetMktImport
+select distinct retailer_i,company_nm ,city_i ,city_nm,state_i ,state_c ,getdate(),1,null,null 
+from robin.acfv.dbo.ACFVRetMktImport where company_nm in ('') and city_nm in ('')
+
+Insert into robin.acfv.dbo.ACFVRetMktImport
+select distinct retailer_i,company_nm ,city_i ,city_nm,state_i ,state_c ,getdate(),1,null,null 
+from robin.acfv.dbo.ACFVRetMktImport where city_nm in ('Representative')
+and retailer_i in (4435,5084,5107,5382,6005,7019,7346,7447,7888,8095,10987,11091,601320,791741,977043,977049,977050,1306524) 
+
+##########################################################################################
+==========================================================================================
+= Backup Check
+==========================================================================================
+
+Select Case when ActiveLocation = 1 Then BackupLocation Else AlternateBackupLocation End, *
+from [MT2SQL14].[connection].dbo.AdViewBackupLOcation where BackupType = 'MT2SQL06'
+	
+Select * From [MT2SQL14].[connection].dbo.BackupRunning
+Where BackupLocation = replace('\\MT2BU1\ClientBU2\', 'ClientBU2', 'ClientBU')
+	
+	Select * from [MT2SQL14].[connection].dbo.AdViewBackupHistory order by starttime desc
+
+##########################################################################################
+==========================================================================================
+= Client Retailer Coverage
+==========================================================================================
+use MasterClientCoverage
+
+select * from MasterClientCWMPEP Where CategorycodeId In (
+select CategoryCodeId from Mt2sql14.SiteControl.dbo.vw_catinfo where Category = 'pgpep'
+)
+
+select Distinct rm.Advertiser, rm.Market from MasterClientCWMPEP  mc
+Join RetMktPep Rm on Rm.retmktid = mc.retmktid
+Where mc.CategorycodeId In (
+select CategoryCodeId from Mt2sql14.SiteControl.dbo.vw_catinfo where Category = 'pgpep'
+) Order BY 1,2
+
+
+##########################################################################################
+==========================================================================================
+= Category coverage check Client 
+==========================================================================================
+use SiteControl
+
+select * from SiteControl.dbo.MerchandiseCategoryControl mcc
+Join SiteControl.dbo.MerchandiseCategoryTemplatesDetail mctd on mctd.MCTemplateID = mcc.MCTemplateID
+where mcc.CategoryCodeID IN (
+select CategoryCodeId from Mt2sql14.SiteControl.dbo.vw_catinfo where Category = 'pgpep')
+
+
+SELECT  ClientTableName FROM tablenames WHERE CategoryCodeId = 5865 AND tableid = 3
+
+select CustomStep, * from SiteControl..vw_catinfo where Category= 'PclPeP' -- 5865
+select category from mt2sql14.sitecontrol.dbo.[vw_MasterSegmentation] where category='PclPeP'
+
+##########################################################################################
+
+==========================================================================================
+= Find the Text in All SSIS jobs
+==========================================================================================
+
+select * from msdb.dbo.sysjobs j
+join msdb.dbo.sysjobsteps s on j.job_id = s.job_id
+where s.command like '%AC_FV_Category%'
+-- and s.subsystem like 'SSIS'
+
+##########################################################################################
+==========================================================================================
+= Find Category wise Client List
+==========================================================================================
+
+select c.*
+from mt2sql14.SiteControl.dbo.MerchandiseCategoryControl a join mt2sql14.SiteControl.dbo.MerchandiseCategoryTemplatesDetail b
+on a.MCTemplateID = b.MCTemplateID
+Join mt2sql14.SiteControl.dbo.vw_catinfo c on a.CategoryCodeID = c.CategoryCodeId
+where realcategory = 'Refrigerated Coffee Creamers'
+order by clientserver
+
+
+##########################################################################################
+==========================================================================================
+= Find References Table By foreign keys for a table
+==========================================================================================
+
+select b.*
+from sys.foreign_keys a join sys.sysobjects b
+on a.parent_object_id = b.id
+where a.referenced_object_id In (select id from sys.sysobjects where name = 'MasterFields' and type='U')
+
+##########################################################################################
+==========================================================================================
+= Find Text in Procedure
+==========================================================================================
+
+select b.name from sys.all_sql_modules  a join sys.procedures b on b.object_id = a.object_id
+where definition like '%UpdatesTimeLog%'
+
+##########################################################################################
+==========================================================================================
+= Check Package Step execution time detail
+==========================================================================================
+
+Select source, Start, EndTime, Convert(time,  EndTime - Start) As Duration
+From  (
+select source, Min(starttime) As Start, Max(starttime) As EndTime
+from msdb..sysssislog
+where starttime >= '2022-02-22 00:30:27.000' and starttime <='2022-02-22 11:40:24.000'
+Group by source) a Order by Start
+
+##########################################################################################
+==========================================================================================
+= Reset Full Run for Pep
+==========================================================================================
+select * from SiteControl..CategoryCode where IsFull = 1 and FVCCType in (2,4,6)
+
+Update SiteControl..CategoryCode set IsFull= 0 where IsFull = 1 and FVCCType in (2,4,6)
+
+##########################################################################################
+==========================================================================================
+= Update Log Checktime on robin
+==========================================================================================
+
+Declare @vDate DateTime = Convert(Date, Getdate()-1)
+
+Select *, DATEDIFF(MInute, Starttime, Endtime) Duration
+From 
+( select step, Min(Starttime) Starttime, max(Endtime) Endtime
+from ACFV..Checktime 
+where CONVERT(date, Starttime) = @vDate or CONVERT(date, Endtime) = @vDate
+Group by Step
+) X 
+order by 2
+
+##########################################################################################
+==========================================================================================
+= Column data Type Check
+==========================================================================================
+
+select t.name, c.*
+from sys.sysobjects o
+join sys.columns c on c.object_id = o.id
+Join sys.types t on c.system_type_id = t.system_type_id and c.user_type_id = t.user_type_id
+where o.name = 'ad_retailers'
+order by c.column_id
+##########################################################################################
+==========================================================================================
+= PDT Template report fields check
+==========================================================================================
+
+select * from SiteControl..vw_ReportFields where CategoryCodeId = 4712 
+and IsPDTTemplate = 1 
+and DisplaySeq is not null order by DisplaySeq 
+
+select a.FieldName + ' [' + a.DisplayName + '],' from mt2sql14.SiteControl.dbo.vw_ReportFields a 
+Join mt2sql14.SiteControl.dbo.TableNames t On t.TableID = a.TableId and a.CategoryCodeId = t.CategoryCodeID
+where a.CategoryCodeId = 9418 
+and IsPDTTemplate = 1 
+and ClientID = 1424
+and DisplaySeq is not null order by DisplaySeq
+
+
+##########################################################################################
+==========================================================================================
+= Log Time Check 
+==========================================================================================
+
+;With Cte as
+(
+select id, event, starttime, Lead(Starttime) over(order by source) Entime, DATEDIFF(MINUTE,starttime, Lead(Starttime) over(order by source)) MinuteTake
+from msdb..sysssislog 
+where source like  'PDT NJ%'
+)
+Select * from cte where event like 'OnPre%' order by id desc
+
+--------
+Select source, starttime, Entime, DATEDIFF(MINUTE, starttime, Entime) Duration
+From 
+(select id, source, event, starttime, --Lead(Starttime) over(order by source) Entime
+( Select min(endtime) From msdb..sysssislog b
+	Where b.id> a.id and a.source = b.source  and b.event = 'OnPostExecute'
+) Entime
+from msdb..sysssislog a
+where source in ( 'PDT Delete','PDT insert','pdt mpv')
+and event = 'OnPreExecute'
+and CONVERT(date, starttime) >= '08/02/2023'
+) X Order by source, starttime desc
+
+##########################################################################################
+==========================================================================================
+= Index Count on Table
+==========================================================================================
+select t.name, i.name, c.name
+from sys.tables t 
+JOin sys.indexes i on t.object_id = i.object_id
+join sys.index_columns ic on ic.index_id = i.index_id and ic.object_id = t.object_id
+Join sys.columns c on c.object_id = ic.object_id and ic.column_id = c.column_id 
+where t.name = 'acfvdetailreports'
+and c.name = 'ACAdvertiserId'
+Order by 1,2,3
+
+select t.name , count(1) from sys.tables t join sys.indexes i
+on t.object_id = i.object_id
+where t.name like '%Detailreports' and t.name not like '%export%'
+group by t.name  
+order by 2
+
+
+select i.name, count(1)
+from sys.objects t 
+Join sys.indexes i on i.object_id = t.object_id
+Join sys.index_columns ic on ic.object_id = t.object_id and i.index_id = ic.index_id
+JOin sys.columns c on t.object_id = c.object_id and ic.column_id = c.column_id
+where c.name in (
+'retmktid','mediaid','categoryid','merchandisecategoryid','merchandisesubcatid','addate','brandid','manufacturerid','featuresid','ACSegment','ACCategoryId','MainOffer','AcRepFlag','ACbrandfamily','ACBrandFamilyId',' saleprice1','MPVOfferType','AdBlockId')
+and t.name = 'ACFVDetailReports'
+and t.type = 'U'
+group by i.name
+order by 2 
+
+##########################################################################################
+==========================================================================================
+= Executing session detail
+==========================================================================================
+
+select qp.query_plan, qt.text, r.* from sys.dm_exec_requests  r
+Cross apply sys.dm_exec_query_plan(r.plan_handle) qp
+Cross apply sys.dm_exec_sql_text(r.plan_handle) qt
+where session_id = 61 
+
+##########################################################################################
+
+SQL16	-- Log Check
+ 
+use ACFVINCR
+select * from acfvAdblockReports_Process_Log
+
+##########################################################################################
+-- Remove missing circular from parking data, to redude next day load
+
+Delete p 
+from ACFV..Updated_adblock_parked p 
+Join tempdb..tempWeeklyMissingCheck t 
+on t.adc_i = p.adc_i and t.circ_i = p.Circ_i
+
+##########################################################################################
+==========================================================================================
+= Full Build MPV Tables
+==========================================================================================
+
+EXEC CreateMPVFieldsTables 'FullStaging', 'MasterACFV..ACFV', '' , '', 'unipep', 1, 1, 1, null,1
+
+##########################################################################################
+==========================================================================================
+= Change Job Startup step 
+==========================================================================================
+
+exec msdb.dbo.sp_update_job 
+	@job_name = N'Nightly Load - SQL06',
+	@start_step_id = 1 
+
+##########################################################################################
+==========================================================================================
+= Field coverage client List
+==========================================================================================
+
+select c.FVCCType, c.ClientName, c.HomePageLink, rtd.*
+from vw_catinfo c
+Join ReportFormatControl rc on rc.ClientID = c.ClientID and c.CategoryCodeId = rc.CategoryCodeID
+JOin ReportFormatTemplates rt on rt.RptTemplateID = rc.RptTemplateID
+Join ReportFormatTemplatesDetail rtd on rtd.RptTemplateID = rt.RptTemplateID
+where rtd.FieldID = 124
+and rc.IsPDTTemplate = 1 
+
+##########################################################################################
+==========================================================================================
+= PDT coverage 
+==========================================================================================
+
+select c.ClientName, c.HomePageLink, c.ClientServer
+from ReportFormatTemplatesDetail rdt
+Join ReportFormatTemplates rt on rdt.RptTemplateID = rt.RptTemplateID
+Join ReportFormatControl rc on rc.RptTemplateID = rt.RptTemplateID
+JOin vw_catinfo c on c.CategoryCodeId = rc.CategoryCodeID
+where DisplayName like '%IRI Week Ending%' and DisplaySeq is not null
+and c.FVCCType in (2,4,6)
+
+##########################################################################################
+==========================================================================================
+= Advertiser- market coverage check
+==========================================================================================
+
+Select Distinct ClientName, Homepagelink, MArket  from MasterClientCoverage.Dbo.retmktpep r
+Join MasterClientCoverage..MasterClientCWMPEP mcc on mcc.Retmktid = r.Retmktid 
+Join Mt2SQl14.sitecontrol.dbo.vw_catinfo c on c.clientid = mcc.clientid and mcc.categorycodeid = c.categorycodeid
+Where r.advertiser = 'Met Foods'
+And Market = 'Jersey City, NJ'
+--and mcc.categorycodeid in (4770, 9418, 9423)	-- 9423 Ops,  ## 9418 -- all remt
+and Fvcctype in (2,4,6)
+Order by  1, 2
+
+##########################################################################################
+==========================================================================================
+= Category coverage
+==========================================================================================
+
+select C.ClientName, C.HomePageLink, MCT.RealCategory
+from mt2sql14.SiteControl.dbo.MerchandiseCategoryTemplatesDetail MCT
+Join mt2sql14.SiteControl.dbo.MerchandiseCategorycontrol  MCC on MCC.MCTemplateID = MCT.MCTemplateID
+Join mt2sql14.SiteControl.dbo.vw_Catinfo C on C.CategoryCodeId = MCC.CategoryCodeID
+Where C.FVCCType in (2,4,6)
+--and mcc.categorycodeid in (4770, 9418, 9423)	-- 9423 Ops,  ## 9418 -- all remt
+--And MCT.RealCategory like 'Salad%'
+and MCT.RealCategory in ('Antacid')
+Order BY 1,2,3
+##########################################################################################
+select 'truncate table '+ name + '
+Drop table ' + name,  create_date, *
+from  sys.tables where name like 'WyouPEP%' order by 2 desc
+
+##########################################################################################
+
+1 = Manufacture
+2 = Retailer
+3 = Distributor
+
+Field Name : ClientType
+Table Name : ClientProfile
+
+##########################################################################################
+adview\83Ad1c65_f3Ab_4bee_A
